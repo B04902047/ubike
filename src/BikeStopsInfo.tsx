@@ -1,47 +1,19 @@
 import { CSSProperties, useState, useEffect, ReactNode} from "react"
-import searchIcon from './SearchIcon.svg';
-import axios, { AxiosResponse } from 'axios';
-import twoWomenBiking from "./twoWomenBiking.svg";
+import searchIcon from './images/SearchIcon.svg';
+import twoWomenBiking from "./images/twoWomenBiking.svg";
 import CheckBox from '@mui/material/Checkbox';
 import createTheme from "@mui/material/styles/createTheme";
 import { ThemeProvider } from "@emotion/react";
-
-interface UbikeStop {
-  id: string;
-  city: string;
-  name: string;
-  district: string;
-  availableBikes: number;
-  availableParkingLots: number;
-}
-
-function useUbikeStopDataSet() {
-  let [ubikeStops, setUbikeStops] = useState<UbikeStop[]>([]);
-  useEffect(() => {
-    axios.get("https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json")
-      .then((response: AxiosResponse<any[], any>) => {
-        let data: UbikeStop[] = response.data.map(stop => {
-          return {
-            id: stop.sno,
-            city: "台北市",
-            name: stop.sna,
-            district: stop.sarea,
-            availableBikes: stop.sbi,
-            availableParkingLots: stop.bemp
-          };
-        });
-        setUbikeStops(data);
-      })
-  }, []);
-  return ubikeStops;
-}
-
+import useUbikeStopsDataSet from './useUbikeStopsDataSet';
+import UbikeStop from "./UbikeStop";
+import { useRWD, Device } from "./useRWD";
 
 function BikeStopsInfo(): JSX.Element {
-  const style: CSSProperties = {
-      marginLeft: 124
+  let device = useRWD();
+  let style: CSSProperties = {
+      marginLeft: device == 'PC'? 124: 32
   }
-  const headingStyle: CSSProperties = {
+  let headingStyle: CSSProperties = {
       fontFamily: "Noto Sans CJK TC",
       fontSize: 24,
       fontWeight: 700,
@@ -49,28 +21,42 @@ function BikeStopsInfo(): JSX.Element {
       textAlign: "left",
       color: "#B5CC22"
   };
-  const checkboxesStyle: CSSProperties = {
-    minWidth: 500,
-    width: "40%",
+  let checkboxesStyle: CSSProperties = {
+    width: device == 'PC'? "40%" : 320,
     display: "inline-block",
     fontFamily: "Noto Sans CJK TC",
-    fontSize: 18,
+    fontSize: device == 'PC'? 18 : 16,
     fontWeight: 400,
     letterSpacing: "0em",
     textAlign: "left",
-    marginRight: 70,
-    marginTop: 20
+    marginTop: device == 'PC'? 20: 0,
   };
+  let tableStyle: CSSProperties = {
+    width: device == 'PC'? undefined: '90%',
+    overflowX: 'scroll'
+  }
+  switch (device) {
+    case 'PC':
+      break;
+    case 'mobile':
+      break;
+  }
 
 
   let [searchTerm, setSearchTerm] = useState("");
   let [[region, districtsIsSelected], setRegionAndSelectedDistricts]
     = useState<[string, {[district: string]: boolean}]>(['', {}]);
-  let ubikeStops: UbikeStop[] = useUbikeStopDataSet();
+  let ubikeStops: UbikeStop[] = useUbikeStopsDataSet();
+  let searchBar: JSX.Element =
+    <SearchBar
+      value={searchTerm}
+      onChange={setSearchTerm}
+    />
 
   return (
     <div style={style}>
       <h2 style={headingStyle}>站點資訊</h2>
+      {device == 'mobile' && <div style={{paddingBottom: 8}}>{searchBar}</div>}
       <RegionSelect
         region={region}
         setRegion={region => {
@@ -82,12 +68,9 @@ function BikeStopsInfo(): JSX.Element {
             newDistrictsIsSelected
           ]);
         }}
-        filterText={searchTerm}></RegionSelect>
-      <SearchBar
-        value={searchTerm}
-        onChange={setSearchTerm}
-      />
-      {region != '' && <div>
+        filterText={searchTerm}/>
+      {device == 'PC' && searchBar}
+      {region != '' && <div style={{minWidth: 700, overflowX: 'auto'}}>
         <div style={checkboxesStyle}>
           <LabelledCheckbox
             checked={Object.values(districtsIsSelected).every(b => b)}
@@ -109,9 +92,11 @@ function BikeStopsInfo(): JSX.Element {
               </span>
           ))}
         </div>
-        <img src={twoWomenBiking}></img>
+        {device == 'PC' && <img src={twoWomenBiking} style={{position: "relative", bottom: -30, marginLeft: 100}}></img> }
       </div>}
-      <UbikeStopTable data={ubikeStops.filter(shouldShowInTable)}/>
+      <div style={tableStyle}>
+        <UbikeStopTable data={ubikeStops.filter(shouldShowInTable)}/>
+      </div>
     </div>
   );
   function shouldShowInTable(ubikeStop: UbikeStop): boolean {
@@ -131,16 +116,16 @@ function BikeStopsInfo(): JSX.Element {
   }): JSX.Element {
 
     const style: CSSProperties = {
-      margin: "10px 5px 10px 10px",
+      margin: "10px 10px 10px 0px",
       display: "inline-block",
-      fontSize: 18,
+      fontSize: device == 'PC'? 18: 16,
     }
     const theme = createTheme({
       palette: {
         primary: {
           main: "#B5CC22"
         }
-      },
+      }
     });
     return (
       <ThemeProvider theme={theme}>
@@ -149,7 +134,7 @@ function BikeStopsInfo(): JSX.Element {
               checked={props.checked}
               onChange={(event) => { props.onCheck(event.target.checked); }}
               />
-            &nbsp;&nbsp;{props.label}
+            {props.label}
         </div>
       </ThemeProvider>
     )
@@ -158,11 +143,12 @@ function BikeStopsInfo(): JSX.Element {
 }
 
 function UbikeStopTable(props: {data: UbikeStop[]}): JSX.Element {
+  let device = useRWD();
   if (props.data.length == 0) return <></>;
   let style: CSSProperties = {
     borderCollapse: "collapse",
     margin: "25px 0",
-    fontSize: "0.9em",
+    fontSize: device == 'PC'? 18: 16,
     width: "90%",
     minWidth: 700,
     textAlign: "center",
@@ -187,7 +173,8 @@ function UbikeStopTable(props: {data: UbikeStop[]}): JSX.Element {
       borderRadius: `${props.isFirst? 28: 0}px ${props.isLast? 28: 0}px 0px 0px`,
       paddingTop: 21,
       paddingBottom: 21,
-    }
+      width: 0
+    };
     return (
       <th style={style}>
         {props.children}
@@ -223,18 +210,17 @@ function UbikeStopTable(props: {data: UbikeStop[]}): JSX.Element {
 }
 
 function SearchBar(props: {value: string; onChange(value: string): void}): JSX.Element {
+  let device = useRWD();
   let style: CSSProperties = {
     width: 277,
-    top: 192,
-    left: 315,
     padding: "8px 16px 8px 16px",
     borderRadius: 8,
     border: "none",
     outline: "none",
-    marginLeft: 16,
+    marginLeft: device == 'PC'? 16: 0,
     backgroundColor: "#F6F6F6",
     fontFamily: "Noto Sans CJK TC",
-    fontSize: 18,
+    fontSize: device == 'PC'? 18: 16,
     fontWeight: 500,
     letterSpacing: 0.10000000149011612,
   };
@@ -254,7 +240,7 @@ function SearchBar(props: {value: string; onChange(value: string): void}): JSX.E
     borderRadius: "40%",
   }
   return (
-    <>
+    <span style={{whiteSpace: 'nowrap'}}>
       <input
         style={style}
         placeholder="搜尋站點"
@@ -269,7 +255,7 @@ function SearchBar(props: {value: string; onChange(value: string): void}): JSX.E
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >x</button>
-    </>
+    </span>
   )
 }
 
@@ -278,9 +264,10 @@ function RegionSelect(props: {
   region: string,
   setRegion(region: string): void
 }): JSX.Element {
+  let device = useRWD();
   const regionList = getRegionList();
   let style: CSSProperties = {
-    width: 175,
+    width: device == 'PC'? 175: 308,
     height: 40,
     left: 124,
     padding: "8px 16px 8px 16px",
@@ -288,7 +275,7 @@ function RegionSelect(props: {
     border: "none",
     outline: "none",
     backgroundColor: "#F6F6F6",
-    fontSize: 18
+    fontSize: device == 'PC'? 18: 16
   }
   return (
     <select
